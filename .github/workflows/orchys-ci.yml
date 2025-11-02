@@ -1,0 +1,38 @@
+name: Orchys CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install deps
+        run: npm ci
+
+      # ENVهای ضروری — مقادیر را از Secrets می‌گیرد
+      - name: Run scenario (contracts)
+        env:
+          BASE_URL: ${{ secrets.BASE_URL }}
+          E2E_USER: ${{ secrets.E2E_USER }}
+          E2E_PASS: ${{ secrets.E2E_PASS }}
+          TARGET:   ${{ secrets.TARGET }}
+        run: npm run scenario -- contracts
+
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: orchys-logs
+          path: reports/logs/*.json
