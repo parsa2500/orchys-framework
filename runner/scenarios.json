@@ -1,0 +1,75 @@
+
+{
+  "contracts": {
+    "description": "تست ماژول قراردادها",
+    "roadmap": [
+      "bootstrap/health.cy.ts",
+      "contracts/setup.cy.ts",
+      "contracts/create.cy.ts",
+      "contracts/cleanup.cy.ts"
+    ]
+  },
+  "claim_level_tests": {
+    "description": "تست مراحل رسیدگی",
+    "roadmap": [
+      "Claim Level Test/claim level 1 .cy.ts",
+      "Claim Level Test/claim level 2 .cy.ts",
+      "Claim Level Test/claim level 3 .cy.ts",
+      "Claim Level Test/claim level 4 .cy.ts",
+      "Claim Level Test/claim level 5 .cy.ts"
+    ]
+  },
+  "claim_level_tests2": {
+    "description": "تست مراحل رسیدگی",
+    "roadmap": [
+      {
+        "spec": "Claim Level Test/claim level 3 .cy.ts",
+        "policy": {
+          "retries": 1,
+          "onError": {
+            "visit": "retry",
+            "Command failed": "skip",
+            "unauthorized": "skip"
+          },
+          "fallback": "continue"
+        }
+      },
+      "Claim Level Test/claim level 4 .cy.ts",
+      "Claim Level Test/claim level 5 .cy.ts"
+    ]
+  },
+  "claim_level_tests3": {
+    "description": "تست مراحل رسیدگی",
+    "roadmap": [
+      {
+        "spec": "Claim Level Test/claim level 3 .cy.ts",
+        "FilePolicy": {
+          "retries": 1,
+          "onError": {
+            "visit": "retry",
+            "Command failed": "skip",
+            "unauthorized": "skip"
+          },
+          "fallback": "continue"
+        },
+        "CasesPolicy":{
+          "describeName":{
+            "itName":{
+              "retries": 2,
+              "onError": {
+                "Command failed": "skip",
+                "visit": "retry"
+              },
+              "fallback": "continue"
+            }
+          }
+        }
+      },
+      "Claim Level Test/claim level 4 .cy.ts",
+      "Claim Level Test/claim level 5 .cy.ts"
+    ]
+  },
+  "Base":{
+    
+  }
+}

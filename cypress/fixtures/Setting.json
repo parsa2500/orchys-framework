@@ -1,0 +1,93 @@
+{
+  "claims": {
+    "ClaimLevel": {
+      "En": {
+        "second": "j3DwPqKLLI"
+      }
+    }
+  },
+  "Base": {
+    "announcement": {
+      "subject": {
+        "first": "kDyOifRm8I",
+        "second": "XDTQ5QysFS"
+      },
+      "textarea": {
+        "first": "L7do1Mi9TvDhU7ehqdHQVng8pnZFSY",
+        "second": "L7do1Mi9TvDhU7ehqdHQVng8pnZFSYmjdQAL0zVLh8vTb81x8E5t1eLQH8CT"
+      }
+    },
+    "Bank": {
+      "subject": {
+        "first": "9AjT1SusPh",
+        "second": "3kYYGm5qmw"
+      }
+    },
+    "Deduction": {
+      "subject": {
+        "first": "4ycPjo9bUJ",
+        "second": "fBKlBkbAgU"
+      },
+      "personel": {
+        "subject": {
+          "first": "c8O2Gdx81h",
+          "second": "IDQ9FNC5LE"
+        },
+        "percent": {
+          "first": "65",
+          "second": "29"
+        }
+      }
+    },
+    "contractDelayReasons": {
+      "subject": {
+        "first": "EWS6nT04zi",
+        "second": "t37Gt4nSAF"
+      },
+      "ligal": {
+        "first": "غیرمجاز",
+        "second": "غیرمجاز"
+      },
+      "Guilty": {
+        "first": "کارفرما",
+        "second": "مشاور"
+      }
+    },
+    "ContractType": {
+      "subject": {
+        "first": "d017SguOZ5",
+        "second": "IsuD8bwaQR"
+      }
+    },
+    "customs": {
+      "subject": {
+        "first": "DaWa3lrWpx",
+        "second": "Y9mbmKGXvp"
+      }
+    },
+    "newsPaper": {
+      "subject": {
+        "first": "1Tf1byHgB6",
+        "second": "cK1IZRJGFL"
+      }
+    },
+    "packaging": {
+      "subject": {
+        "first": "85UNWW0lNr",
+        "second": "jmQz25mlqH"
+      }
+    },
+    "PaymentTerms": {
+      "subject": {
+        "first": "hfLdQjUMIH",
+        "second": "X5irGTvEZH"
+      }
+    },
+    "pricelists": {
+      "subject": {
+        "first": "GGzWM8J4d7",
+        "second": "8Xo1amzi0U"
+      }
+    }
+  }
+}

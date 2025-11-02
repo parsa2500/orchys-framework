@@ -1,0 +1,472 @@
+{
+  "project": {
+    "name": "Enterprise E2E Test Automation Framework",
+    "version": "1.0.0",
+    "owner": "QA Automation Team",
+    "purpose": "طراحی و اجرای فریم‌ورک تست سازمانی برای سامانه بسیار داینامیک (قراردادها، دعاوی، تنظیمات پایه، ارزیابی، اتوماسیون و ...)، با سناریوهای ماژولار، ریتراي هوشمند، گزارش‌گیری و قابلیت اجرا توسط مدیران غیر فنی."
+  },
+  "goals": {
+    "quality": [
+      "پایداری بالا بدون فلِیکی",
+      "ایزولیشن داده (seed/teardown) و عدم وابستگی به پیش‌فرض‌ها",
+      "selectorهای پایدار (data-testid/role) بدون nth-child/text شکننده"
+    ],
+    "productivity": [
+      "Scenario-based execution (contracts/disputes/settings/full)",
+      "Roadmap orchestration (ترتیب و وابستگی فایل‌ها)",
+      "Fault-tolerant execution (re-login, retry, stop-line)",
+      "گزارش ساختارمند JSON/Allure"
+    ],
+    "scalability": [
+      "قابل توسعه برای ماژول‌های جدید",
+      "قابل اتصال به CI/CD",
+      "Config/Data-driven (بدون تغییر کد برای مشتری/سازمان جدید)"
+    ]
+  },
+  "non_goals": [
+    "جایگزینی کامل مدیریت تغییرات UI/Backend",
+    "تضمین تست بار/عملکرد (خارج از دامنه این فریم‌ورک)"
+  ],
+  "tech_stack": {
+    "framework": "Cypress v14+ (E2E runner)",
+    "language": "TypeScript",
+    "runtime": "Node.js (ts-node برای runner)",
+    "reporting": "JSON logs, Allure (فاز بعد)",
+    "ci_cd": "GitLab/Jenkins/GitHub Actions (پیشنهادی)",
+    "time": "Intl/Day.js (Jalali در صورت نیاز)"
+  },
+  "environments": {
+    "targets": ["dev", "staging", "prod"],
+    "env_vars": [
+      "url",
+      "dashboardUrl",
+      "contractUrl",
+      "username",
+      "password",
+      "role",
+      "target"
+    ],
+    "sample": {
+      "target": "staging",
+      "url": "http://test.andishehpardaz.local/",
+      "dashboardUrl": "http://test.andishehpardaz.local/dashboard",
+      "contractUrl": "http://test.andishehpardaz.local/contracts",
+      "username": "qa-automation",
+      "password": "********",
+      "role": "admin"
+    }
+  },
+  "directory_structure": {
+    "root": [
+      "cypress/",
+      "runner/",
+      "reports/",
+      "package.json",
+      "tsconfig.json",
+      "cypress.config.ts"
+    ],
+    "cypress": {
+      "e2e": [
+        "bootstrap/",
+        "settings/",
+        "requests/",
+        "contracts/",
+        "disputes/",
+        "evaluation/",
+        "cleanup/"
+      ],
+      "fixtures": [
+        "seed/",
+        "mocks/",
+        "testdata/",
+        "uiMap.json"
+      ],
+      "support": [
+        "e2e.ts",
+        "api.ts",
+        "ui.ts",
+        "guards.ts",
+        "types/",
+        "commands/"
+      ]
+    },
+    "runner": [
+      "scenarioManager.ts",
+      "scenarios.json",
+      "roadmap.ts",
+      "manager.ts",
+      "fault.ts",
+      "logger.ts",
+      "reporter.ts",
+      "hooks.ts",
+      "config.ts"
+    ],
+    "reports": [
+      "logs/",
+      "allure-results/"
+    ]
+  },
+  "execution_model": {
+    "layers": [
+      {
+        "name": "Scenario Manager",
+        "responsibilities": [
+          "انتخاب و اجرای سناریو بر اساس scenarios.json یا پارامتر CLI",
+          "پشتیبانی از شرایط اجرای سناریو (if: env.role == 'admin')",
+          "ارسال لیست specها به Roadmap Orchestrator"
+        ],
+        "entrypoints": [
+          "npm run scenario:<name>",
+          "node runner/scenarioManager.ts <name>",
+          "MODE=gui برای بازکردن Cypress UI در توسعه"
+        ],
+        "inputs": ["runner/scenarios.json", "process.env.*"],
+        "outputs": ["فهرست specهای منتخب", "log شروع/پایان سناریو"]
+      },
+      {
+        "name": "Roadmap Orchestrator",
+        "responsibilities": [
+          "اجرای ترتیبی فایل‌ها",
+          "مدیریت retry per-file",
+          "رعایت وابستگی‌ها و stop-on-failure",
+          "تعامل با Fault Controller و Logger"
+        ],
+        "inputs": ["لیست specها از Scenario Manager", "runner/config.ts"],
+        "outputs": ["وضعیت هر spec", "trigger خطا/ریکاوری"]
+      },
+      {
+        "name": "Fault Controller",
+        "responsibilities": [
+          "تشخیص نوع خطا (401/login/session/csrf/timeout/api/ui)",
+          "تصمیم: retry، re-login، stop-line",
+          "بازگشت تصمیم کنترل به Roadmap"
+        ],
+        "policies": [
+          "AuthFailure → re-login و سپس retry",
+          "Timeout → retry تا سقف فایل",
+          "Seed/Permission failure → stop-line",
+          "Non-critical UI → retry محدود"
+        ]
+      },
+      {
+        "name": "Logger Engine",
+        "responsibilities": [
+          "ثبت ساختارمند رویدادها",
+          "ذخیره JSON log per-scenario/spec",
+          "تأمین داده برای گزارش نهایی/Allure"
+        ],
+        "schema_sample": {
+          "name": "contracts/create.cy.ts",
+          "status": "passed | failed | retried",
+          "attempt": 2,
+          "durationMs": 12500,
+          "errors": [
+            {
+              "type": "AuthFailure | Timeout | UIAssertion | ApiError",
+              "message": "401 Unauthorized",
+              "at": "beforeEach(login)"
+            }
+          ],
+          "timestamps": {
+            "start": "2025-10-23T09:00:00.000Z",
+            "end": "2025-10-23T09:00:12.500Z"
+          },
+          "env": {
+            "target": "staging",
+            "role": "admin"
+          }
+        }
+      },
+      {
+        "name": "Feature Modules",
+        "responsibilities": [
+          "setup/seed داده و پرمیشن",
+          "test flowهای اصلی",
+          "teardown/cleanup برای idempotency"
+        ],
+        "convention": "هر ماژول سه فایل: setup.cy.ts / test(s).cy.ts / cleanup.cy.ts",
+        "dependencies": "هر ماژول فقط از UI/API Engine استفاده کند، نه DOM خام"
+      },
+      {
+        "name": "API/Data Layer",
+        "responsibilities": [
+          "loginByApi/سیشن",
+          "seedMinimalData/ensurePermissions",
+          "cleanupArtifacts"
+        ],
+        "endpoints_examples": [
+          "POST /api/seed/contracts",
+          "POST /api/cleanup/contracts",
+          "POST /api/permissions/apply",
+          "GET  /Scripts/cldr/supplemental/weekData.json (health)"
+        ]
+      },
+      {
+        "name": "UI Interaction Engine",
+        "responsibilities": [
+          "abstraction تعاملات UI (UI.field/UI.select/UI.button/UI.modal)",
+          "data-driven selectors: fixtures/uiMap.json",
+          "self-healing fallback (label→input)"
+        ],
+        "uiMap_example": {
+          "FormEngine": {
+            "title": { "selector": "[data-testid='fe-title']", "type": "text" },
+            "type": { "selector": "select[name='Type']", "type": "select" },
+            "submit": { "selector": "button[type='submit']", "type": "button" }
+          }
+        }
+      },
+      {
+        "name": "Reporting",
+        "responsibilities": [
+          "تجمیع JSON logs",
+          "خروجی خلاصه per-scenario",
+          "Allure integration (فاز 3)",
+          "قابلیت ارسال به Slack/Email (اختیاری)"
+        ],
+        "summary_schema": {
+          "scenario": "contracts",
+          "total": 5,
+          "passed": 4,
+          "failed": 1,
+          "retried": 2,
+          "duration": "00:03:20",
+          "bySpec": [
+            { "spec": "bootstrap/health.cy.ts", "status": "passed" },
+            { "spec": "contracts/setup.cy.ts", "status": "passed" },
+            { "spec": "contracts/create.cy.ts", "status": "failed", "attempts": 3 },
+            { "spec": "contracts/evaluation.cy.ts", "status": "passed" },
+            { "spec": "contracts/cleanup.cy.ts", "status": "passed" }
+          ]
+        }
+      }
+    ]
+  },
+  "scenarios": {
+    "file": "runner/scenarios.json",
+    "examples": {
+      "contracts": {
+        "description": "قراردادها از health تا cleanup",
+        "roadmap": [
+          "bootstrap/health.cy.ts",
+          "contracts/setup.cy.ts",
+          "contracts/create.cy.ts",
+          "contracts/evaluation.cy.ts",
+          "contracts/cleanup.cy.ts"
+        ]
+      },
+      "disputes": {
+        "description": "دعاوی",
+        "roadmap": [
+          "bootstrap/health.cy.ts",
+          "disputes/create.cy.ts",
+          "disputes/manage.cy.ts",
+          "disputes/cleanup.cy.ts"
+        ]
+      },
+      "settings": {
+        "description": "تنظیمات پایه (فرم/پرمیشن/کاربر)",
+        "roadmap": [
+          "settings/forms.cy.ts",
+          "settings/permissions.cy.ts",
+          "settings/users.cy.ts"
+        ]
+      },
+      "full": {
+        "description": "اجرای کامل",
+        "includes": ["contracts", "disputes", "settings"]
+      }
+    },
+    "cli_usage": [
+      "npm run scenario:contracts",
+      "npm run scenario:disputes",
+      "npm run scenario:settings",
+      "npm run scenario:full",
+      "MODE=gui npm run scenario:contracts"
+    ]
+  },
+  "fault_policies": {
+    "classification": {
+      "AuthFailure": ["401", "unauthorized", "login", "session", "csrf"],
+      "Timeout": ["Timed out", "超时", "timeout"],
+      "ApiError": ["500", "502", "503", "Bad Request"],
+      "UIAssertion": ["expected", "should", "visible", "not found"],
+      "SeedOrPermission": ["seed", "permission", "forbidden"]
+    },
+    "decisions": [
+      { "when": "AuthFailure", "action": "relogin_then_retry", "maxRetries": 2 },
+      { "when": "Timeout", "action": "retry", "maxRetries": 2 },
+      { "when": "SeedOrPermission", "action": "stop_line" },
+      { "when": "ApiError", "action": "retry_then_stop", "maxRetries": 1 },
+      { "when": "UIAssertion", "action": "retry", "maxRetries": 1 }
+    ],
+    "stop_line_definition": "توقف اجرای بقیه specهای این سناریو؛ سناریو fail می‌شود؛ cleanup اگر علامت alwaysRun=true بود اجرا می‌شود."
+  },
+  "data_isolation": {
+    "seed": "هر ماژول setup.cy.ts داده‌های لازم را می‌سازد",
+    "teardown": "cleanup.cy.ts آثار را حذف می‌کند",
+    "artifacts_tracking": "شناسه‌ها در fixtures/testdata یا memory موقت ذخیره و بازیابی می‌گردند"
+  },
+  "selectors_strategy": {
+    "priority": [
+      "data-testid",
+      "role + name",
+      "name/id/aria-label",
+      "fallback (label → input)"
+    ],
+    "forbidden": [
+      ":nth-child",
+      "partial fragile text",
+      "[style*=]"
+    ],
+    "uiMap": "fixtures/uiMap.json به‌عنوان منبع واحد انتخاب‌کننده‌ها"
+  },
+  "network_strategy": {
+    "intercepts": "برای هر اکشن UI روی همان API وابسته cy.intercept تعریف شود",
+    "alias_naming": "@getPerms, @createContract, @getOData",
+    "waiting": "فقط روی aliasهای واقعی؛ cy.wait ثابت ممنوع",
+    "assertions": "statusCode و payloadهای کلیدی بررسی شوند"
+  },
+  "session_auth": {
+    "login": "cy.loginByApi() + cy.session(cacheAcrossSpecs: true)",
+    "auth_smoke": "e2e/01.auth.smoke.cy.ts به‌عنوان مرجع ریکاوری",
+    "on_401": "Fault Controller → recover login → retry"
+  },
+  "mvp_scope": {
+    "included": [
+      "Scenario Manager ساده",
+      "Roadmap ترتیبی با retry per-file",
+      "Logger ساده (console + JSON)",
+      "یک سناریو نمونه (contracts)"
+    ],
+    "excluded": [
+      "Allure",
+      "Dashboard CLI پیشرفته",
+      "Self-healing پیشرفته",
+      "Slack/Email notifier"
+    ],
+    "success_criteria": [
+      "اجرای npm run scenario:contracts",
+      "ثبت JSON log per-spec",
+      "قطع سناریو روی fail و نمایش خلاصه"
+    ]
+  },
+  "final_scope": {
+    "adds": [
+      "Fault Controller کامل",
+      "Allure Reports",
+      "UI Interaction Engine کامل با uiMap",
+      "Dashboard CLI با MODE=gui/headless",
+      "CI/CD pipeline jobs"
+    ],
+    "acceptance": [
+      "اجرای سناریوها در CI با report",
+      "پایداری بدون sleep",
+      "ایزولیشن داده برای هر ماژول",
+      "مستندات و دیاگرام‌های معماری"
+    ]
+  },
+  "commands_and_scripts": {
+    "npm_scripts": {
+      "scenario:contracts": "ts-node runner/scenarioManager.ts contracts",
+      "scenario:disputes": "ts-node runner/scenarioManager.ts disputes",
+      "scenario:settings": "ts-node runner/scenarioManager.ts settings",
+      "scenario:full": "ts-node runner/scenarioManager.ts full"
+    },
+    "dev_mode": "MODE=gui برای باز کردن Cypress UI در توسعه (اختیاری در scenarioManager)",
+    "example_run": "npm run scenario:contracts"
+  },
+  "security_and_roles": {
+    "roles": ["admin", "operator", "viewer"],
+    "permission_checks": "ensureUserPermissions() قبل از تست‌های وابسته",
+    "data_privacy": "هیچ داده حساس واقعی در fixtureها ذخیره نشود"
+  },
+  "ci_cd": {
+    "pipelines": [
+      "stage: test:contracts → npm run scenario:contracts",
+      "stage: test:disputes → npm run scenario:disputes",
+      "stage: test:full → npm run scenario:full"
+    ],
+    "artifacts": [
+      "reports/logs/*.json",
+      "allure-results/** (فاز 3)"
+    ],
+    "gates": [
+      "stop pipeline on stop-line",
+      "allow cleanup alwaysRun"
+    ]
+  },
+  "glossary": {
+    "Scenario": "مجموعه‌ای از specها با ترتیب مشخص (مثلاً contracts)",
+    "Roadmap": "لیست specها و وابستگی‌ها/ریترای هر فایل",
+    "Stop-line": "قطع اجباری ادامه سناریو پس از خطای بحرانی",
+    "Self-healing": "تلاش هوشمند برای یافتن selector جایگزین",
+    "Seed/Teardown": "ساخت/حذف داده برای idempotency"
+  },
+  "maintenance": {
+    "uiMap_update": "هر تغییر UI فقط در fixtures/uiMap.json به‌روزرسانی شود",
+    "module_contract": "هر ماژول حتماً setup/test/teardown داشته باشد",
+    "review_cycle": "بازبینی ماهانه Fault Policies و Roadmap",
+    "versioning": "tag فازهای اصلی (mvp, core, v1) در git"
+  }
+}
+پروژه من یک فریم‌ورک تست اتوماسیون سازمانی است که با Cypress + TypeScript ساخته شده و ساختار پوشه‌بندی آن به شکل زیر است:
+
+📂 New Framework
+│
+├── 📁 cypress
+│   ├── 📁 e2e
+│   │   ├── bootstrap/
+│   │   ├── create/
+│   │   ├── delete/
+│   │   ├── main_test/
+│   │   ├── restore/
+│   │   └── setup/
+│   │
+│   ├── 📁 fixtures/
+│   │   ├── example.json
+│   │   └── سایر داده‌های تست
+│   │
+│   ├── 📁 support/
+│   │   ├── 📜 commands.ts       ← شامل تمام Custom Commandها (login, randomValue, tryType, safeClick و غیره)
+│   │   ├── 📜 e2e.ts
+│   │   └── 📜 index.d.ts         ← شامل Type Definition مربوط به Commandهای جدید
+│   │
+│   ├── 📁 screenshots/
+│   └── 📁 videos/
+│
+├── 📁 runner/
+│   ├── 📜 scenarioManager.ts     ← مدیریت اجرای سناریوها بر اساس فایل scenarios.json
+│   ├── 📜 faultController.ts     ← مدیریت خطاها و Retry/StopLine بر اساس Policy
+│   ├── 📜 policyEngine.ts        ← سیستم تعریف پالیسی‌ها برای هر تست یا سناریو
+│   ├── 📜 logger.ts              ← لاگر مرکزی برای تولید خروجی JSON در reports/logs
+│   ├── 📜 roadMap.ts             ← کنترل مسیر اجرای تست‌ها
+│   ├── 📜 config.ts              ← تنظیمات عمومی runner
+│   ├── 📜 scenarios.json         ← نقشه‌ی سناریوهای تست (roadmap هر ماژول)
+│   └── 📜 types.ts               ← شامل type و interface‌های عمومی برای logger, scenario, policy, report
+│
+├── 📁 reports/
+│   ├── 📁 logs/
+│   ├── 📁 screenshots/
+│   └── 📁 videos/
+│
+├── 📁 shared/
+│   └── 📜 dataCenter.ts          ← دیتاهای عمومی و ثابت پروژه (URLs, users, timeouts, messages و غیره)
+│
+├── 📜 cypress.config.ts
+├── 📜 tsconfig.json
+├── 📜 package.json
+└── 📜 package-lock.json
+
+نکات مهم:
+- تمام تست‌ها با TypeScript نوشته شده‌اند (اما پشتیبانی از .js نیز فعال است).
+- فایل commands.ts شامل تمام custom commandهای Cypress است و از طریق e2e.ts لود می‌شود.
+- logger سیستم مرکزی تولید گزارش JSON دارد.
+- policyEngine مشخص می‌کند برای هر تست یا ارور خاص چه رفتار (retry, stop_line, skip, relogin_then_retry) انجام شود.
+- faultController حلقه‌ی Retry و کنترل اجرای تست‌ها را مدیریت می‌کند.
+- reports/logs خروجی نهایی هر تست را ذخیره می‌کند.
+- dataCenter.ts دیتاهای مشترک را در سطح global نگه می‌دارد.
+- در حال حاضر Allure Reporter و Dashboard CLI هنوز اضافه نشده‌اند (reserved برای Phase 3).
+
+هدف من از این فریم‌ورک: ساخت یک سیستم تست اتوماسیون مقیاس‌پذیر با مدیریت سناریوها، خطا، و گزارش‌گیری هوشمند است.
+

@@ -1,0 +1,582 @@
+.
+
+📘 راهنمای کامل استفاده از فریم‌ورک تست سازمانی Cypress (نسخه MVP)
+🧩 بخش ۱ — Scenario Manager
+
+فایل: runner/scenarioManager.ts
+نقش: نقطه ورود اصلی برای اجرای هر سناریوی تست.
+
+✅ هدف
+
+مدیریت اجرای مجموعه‌ای از specها بر اساس فایل scenarios.json.
+هر سناریو یعنی یک "roadmap" از تست‌هایی که باید به ترتیب اجرا شوند.
+
+🧠 روش استفاده
+اجرای یک سناریو از CLI:
+npm run scenario:contracts
+
+
+این دستور، سناریوی contracts را از scenarios.json می‌خواند:
+
+{
+  "contracts": {
+    "description": "تست ماژول قراردادها",
+    "roadmap": [
+      "bootstrap/health.cy.ts",
+      "contracts/setup.cy.ts",
+      "contracts/create.cy.ts",
+      "contracts/cleanup.cy.ts"
+    ]
+  }
+}
+
+
+و به‌ترتیب فایل‌های داخل roadmap را اجرا می‌کند.
+
+⚙️ ساخت سناریو جدید
+
+اضافه کردن سناریوی جدید بسیار ساده است:
+
+{
+  "users": {
+    "description": "تست کاربران جدید",
+    "roadmap": [
+      "bootstrap/health.cy.ts",
+      "users/setup.cy.ts",
+      {
+        "spec": "users/create.cy.ts",
+        "policyPreset": "retryVisit2"
+      },
+      "users/cleanup.cy.ts"
+    ]
+  }
+}
+
+
+می‌توانی specها را رشته ساده یا آبجکت با پالیسی خاص بنویسی.
+
+policyPreset از policy.presets.json لود می‌شود.
+
+همچنین می‌توانی پالیسی inline بنویسی.
+
+💡 نکات تنظیم
+گزینه	توضیح
+description	فقط برای خوانایی لاگ
+roadmap	ترتیب فایل‌های اجرا
+policyPreset	اعمال پالیسی پیش‌فرض برای آن فایل
+policy	پالیسی اختصاصی inline درون همان سناریو
+🔗 ارتباط با سایر بخش‌ها
+ارتباط	توضیح
+↔ faultController.ts	برای اجرای هر spec و اعمال retry/stop-line
+↔ policyEngine.ts	برای resolve نهایی پالیسی‌ها (preset + inline)
+↔ logger.ts	ثبت لاگ‌ها و وضعیت هر spec در فایل JSON
+🔍 تأثیر تغییرات
+
+تغییر در roadmap، ترتیب اجرا را عوض می‌کند.
+
+تغییر در policyPreset باعث می‌شود faultController رفتار متفاوتی در مواجهه با خطاها نشان دهد (مثلاً به‌جای stop، retry کند).
+
+اگر پالیسی‌ها را اشتباه تنظیم کنی، ممکن است تست‌ها در حلقه‌ی retry بی‌پایان بمانند یا زودتر از موعد متوقف شوند.
+
+⚙️ بخش ۲ — Fault Controller
+
+فایل: runner/faultController.ts
+نقش: مدیریت اجرای یک فایل spec و کنترل خطاها، retry، skip یا stop-line.
+
+✅ روش استفاده
+
+به‌صورت مستقیم صدا زده نمی‌شود؛ توسط Scenario Manager استفاده می‌شود.
+ولی درک آن مهم است چون رفتار retry و stop را کنترل می‌کند.
+
+مثال رفتار:
+
+فرض کن فایل contracts/create.cy.ts fail شود با پیام:
+
+Error: Cannot visit undefined
+
+
+اگر پالیسی preset برابر retryVisit2 باشد:
+
+{
+  "retries": 2,
+  "onError": { "visit": "retry" },
+  "fallback": "continue"
+}
+
+
+→ فریم‌ورک تست را دو بار دیگر تکرار می‌کند.
+اگر باز هم خطا کند، سناریو ادامه می‌یابد (fallback: continue).
+
+🔗 ارتباط با سایر بخش‌ها
+ارتباط	توضیح
+← policyEngine.ts	برای گرفتن پالیسی نهایی (merge preset + inline + default)
+← config.ts	تنظیمات عمومی مانند timeout و مسیر Cypress
+→ logger.ts	ثبت نتیجه هر تلاش
+↔ Cypress CLI	اجرای واقعی تست با npx cypress run --spec
+💡 نکات کاربردی
+
+اگر در خروجی دیدی stop_line=true، یعنی Fault Controller دستور توقف کل سناریو را داده.
+
+هر خطا به‌صورت substring با کلیدهای onError بررسی می‌شود (case-insensitive).
+
+کلیدها باید در preset یا inline تعریف شوند (visit, unauthorized, timeout, network و ...).
+
+🧠 بخش ۳ — Policy Engine
+
+فایل: runner/policyEngine.ts
+نقش: تصمیم‌گیر نهایی رفتار خطاها در فریم‌ورک.
+
+✅ روش تنظیم
+
+دو فایل مرجع دارد:
+
+policy.presets.json
+
+inline policy درون scenarios.json
+
+نمونه preset:
+{
+  "criticalStop": {
+    "retries": 0,
+    "onError": { "*": "stop_line" },
+    "fallback": "stop"
+  }
+}
+
+inline policy:
+{
+  "spec": "Claim Level Test/claim level 3.cy.ts",
+  "policy": {
+    "retries": 1,
+    "onError": {
+      "visit": "retry",
+      "unauthorized": "skip"
+    },
+    "fallback": "continue"
+  }
+}
+
+🔗 ارتباط با سایر بخش‌ها
+ارتباط	توضیح
+← policy.presets.json	presetها از اینجا خوانده می‌شوند
+→ faultController.ts	تصمیم نهایی را برای retry یا stop-line برمی‌گرداند
+↔ scenarioManager.ts	merge inline + preset
+🧩 تأثیر تنظیمات
+
+افزایش retries باعث تأخیر و پایداری بیشتر تست می‌شود.
+
+onError تعیین می‌کند چه کلمه‌ای از پیام خطا با چه رفتاری match شود.
+
+fallback رفتار نهایی در صورت match‌نشدن هیچ کلیدی است.
+
+🧾 بخش ۴ — Logger Engine
+
+فایل: runner/logger.ts
+نقش: ثبت و خروجی وضعیت اجرای تست‌ها.
+
+📋 نمونه خروجی
+
+reports/logs/contracts_2025-10-29.json:
+
+{
+  "scenario": "contracts",
+  "description": "تست ماژول قراردادها",
+  "specs": [
+    { "spec": "bootstrap/health.cy.ts", "status": "passed", "attempts": 1 },
+    { "spec": "contracts/create.cy.ts", "status": "failed", "attempts": 3, "error": "visit timeout" }
+  ],
+  "summary": { "passed": 1, "failed": 1, "retried": 2 }
+}
+
+🔗 ارتباط
+ارتباط	توضیح
+← scenarioManager.ts	برای ثبت شروع و پایان سناریو
+← faultController.ts	برای ثبت نتایج هر spec
+→ reports/logs/*.json	محل ذخیره خروجی
+💡 نکات
+
+ساختار JSON باید ساده بماند تا بعداً به Allure اضافه شود.
+
+می‌توان خروجی را به CI/CD ارسال کرد (در فاز بعدی).
+
+زمان شروع و پایان هر spec هم ثبت می‌شود.
+
+🧱 بخش ۵ — Cypress Layer (Support)
+📂 فایل‌های کلیدی:
+فایل	نقش
+commands.ts	تعریف دستورات اختصاصی (مثل cy.login(), cy.safeClick())
+e2e.ts	نقطه ورود عمومی Cypress برای import کردن commands و مدیریت exceptionها
+fixtures/uiMap.json	نگه‌داری selectorها (در فاز بعد)
+types.d.ts	گسترش Typeها برای پشتیبانی از custom commandها
+✅ نمونه‌های پرکاربرد
+cy.safeClick()
+Cypress.Commands.overwrite("click", (originalFn, subject, options = {}) => {
+  if (Cypress.dom.isAttached(subject)) {
+    return originalFn(subject, { ...options, force: true });
+  }
+  cy.log("Element detached, refinding...");
+  cy.wrap(subject).click({ ...options, force: true });
+});
+
+cy.updateJson(file, path, value)
+cy.readFile(file).then((data) => {
+  Cypress._.set(data, path, value);
+  cy.writeFile(file, data);
+});
+
+🔗 ارتباط با Runner
+Runner	نقش ارتباط
+faultController	اجرای تست‌ها با فراخوانی این دستورات
+logger	ثبت خروجی Cypress پس از هر run
+policyEngine	تحلیل پیام خطاها بر اساس خروجی Cypress
+⚠️ نکات طراحی
+
+هیچ cy.wait() ثابت نباید استفاده شود. فقط cy.intercept() و cy.wait(@alias) معتبرند.
+
+selectorها باید فقط از data-testid یا role استفاده کنند.
+
+هر تغییر در UI فقط در uiMap.json اعمال شود.
+
+🔄 جمع‌بندی روابط کل سیستم
+جزء	ورودی از	خروجی به	هدف
+ScenarioManager	scenarios.json	FaultController / Logger	اجرای ترتیبی specها
+FaultController	PolicyEngine / Cypress	Logger	کنترل خطا و Retry
+PolicyEngine	presets.json / inline	FaultController	تصمیم خطا
+Logger	ScenarioManager / FaultController	reports/logs	خروجی نهایی
+Support Layer	Cypress runtime	FaultController	تعامل UI و API
+Configs	CLI / env	Cypress / Runner	پارامترهای اجرا
+🎯 نتیجه نهایی
+
+این فریم‌ورک الان آمادهٔ اجرای سناریوهای سازمانی در محیط‌های dev/staging است.
+کافی‌ست:
+
+سناریوی جدید را در scenarios.json تعریف کنی.
+
+اگر نیاز به رفتار خاص داری، preset یا inline policy بنویسی.
+
+اجرای آن با:
+
+npm run scenario:<name>
+
+
+لاگ نهایی را در reports/logs/ ببینی.
+
+🧩 بخش ۶ — RoadMap Orchestrator
+
+فایل: runner/roadMap.ts
+نقش: مدیریت اجرای سناریوها در قالب مسیرهای بزرگ‌تر (Pipeline سطح بالاتر).
+
+🎯 هدف
+
+در آینده، فریم‌ورک باید بتونه چند سناریوی مستقل (مثلاً contracts, disputes, settings)
+رو به صورت وابسته و ترتیبی اجرا کنه.
+اینجاست که RoadMap وارد میشه.
+
+در MVP، این فایل هنوز به شکل نمونه وجود داره،
+اما در معماری سیستم جای حیاتی داره چون GrandManager و ScenarioManager ازش استفاده خواهند کرد.
+
+🧠 عملکرد مفهومی
+
+RoadMap مثل «نقشه مسیر اجرای تست‌های چند‌سناریویی» عمل می‌کنه.
+یعنی به‌جای اجرای یک سناریو (contracts)،
+یک pipeline بزرگ‌تر تعریف می‌کنی که شامل چند سناریو باشه.
+
+مثلاً:
+
+{
+  "full_pipeline": {
+    "description": "اجرای کل سامانه",
+    "roadmap": [
+      { "scenario": "contracts" },
+      { "scenario": "claim_level_tests2", "policyPreset": "retryVisit2" },
+      { "scenario": "settings", "policyPreset": "criticalStop" }
+    ]
+  }
+}
+
+⚙️ رفتار در زمان اجرا
+
+grandManager.ts این فایل را می‌خواند.
+
+برای هر step در roadmap.json:
+
+اگر نوعش scenario بود → فراخوانی مستقیم scenarioManager.
+
+اگر نوعش spec بود → اجرای مستقیم فایل (مثل MVP فعلی).
+
+اگر یکی از stepها stop-line دهد، pipeline بلافاصله متوقف می‌شود.
+
+Logger مرکزی اطلاعات همه‌ی سناریوها را جمع می‌کند.
+
+🔗 ارتباط با سایر بخش‌ها
+جزء	نوع ارتباط	توضیح
+grandManager.ts	← upstream	منبع اصلی داده‌های pipeline
+scenarioManager.ts	→ downstream	اجرای هر سناریو جداگانه
+logger.ts	↔	جمع‌آوری گزارش کل pipeline
+policyEngine.ts	↔	پالیسی‌های سطح سناریو (مثلاً stop-on-failure در کل pipeline)
+🔍 تأثیر تنظیمات
+
+اضافه کردن pipeline جدید → باعث می‌شود بتوانی چند سناریو را پشت سر هم ران کنی.
+
+تنظیم policyPreset در هر step → تعیین می‌کند که در صورت خطا، pipeline ادامه دهد یا نه.
+
+اگر در یک step خطای stop-line رخ دهد → تمام سناریوهای بعدی skip می‌شوند.
+
+🧱 ساختار درون کد (فاز نهایی)
+import { execSync } from "child_process";
+import { Logger } from "./logger";
+import { loadJson } from "./config";
+import { getPolicy } from "./policyEngine";
+
+export async function runGrand(grandName: string) {
+  const pipelines = loadJson("roadmap.json");
+  const grand = pipelines[grandName];
+  const logger = new Logger(grandName);
+  logger.startScenario(grand.description);
+
+  for (const step of grand.roadmap) {
+    const scenario = typeof step === "string" ? step : step.scenario;
+    const policy = getPolicy(scenario);
+    try {
+      execSync(`ts-node runner/scenarioManager.ts ${scenario}`, { stdio: "inherit" });
+      logger.logSpec(scenario, "passed");
+    } catch (err) {
+      logger.logSpec(scenario, "failed");
+      if (policy.fallback === "stop") {
+        logger.endScenario("failed");
+        process.exit(1);
+      }
+    }
+  }
+  logger.endScenario("passed");
+}
+
+💡 مزیت کلیدی
+
+مدیریت جریان سطح بالا: کنترل کل پروژه از یک نقطه.
+
+اعمال پالیسی‌های بین سناریوها: مثلاً «اگر تنظیمات fail شد، بقیه سناریوها skip شوند».
+
+مناسب برای CI/CD: در فاز سوم به GitLab یا Jenkins متصل می‌شود و هر pipeline به عنوان job مستقل اجرا خواهد شد.
+
+🧩 ارتباط بین GrandManager و RoadMap
+graph TD
+  GM[grandManager.ts] --> RM[roadMap.ts]
+  RM -->|reads| roadmap.json
+  RM -->|runs| SM[scenarioManager.ts]
+  SM --> FC[faultController.ts]
+  FC --> PE[policyEngine.ts]
+  RM --> LG[logger.ts]
+
+🧾 مثال کامل از اجرا
+npm run grand
+
+
+→ داخل grandManager.ts، مسیر پیش‌فرض:
+
+{
+  "full_pipeline": {
+    "description": "اجرای کامل سامانه",
+    "roadmap": [
+      { "scenario": "contracts" },
+      { "scenario": "claim_level_tests2", "policyPreset": "retryVisit2" },
+      { "scenario": "settings", "policyPreset": "criticalStop" }
+    ]
+  }
+}
+
+
+خروجی در reports/logs/full_pipeline_<date>.json ذخیره می‌شود.
+
+🔗 تأثیر کلی روی سیستم
+اثر	توضیح
+اجرای چند سناریو پشت سر هم	دیگر محدود به یک module نیستی
+گسترش‌پذیری CI/CD	هر pipeline می‌تواند stage مستقلی در GitLab/Jenkins شود
+ثبت گزارش جامع	لاگر کل نتایج را در یک فایل واحد ذخیره می‌کند
+کنترل پویای اجرای سناریوها	می‌توان شرطی کرد که برخی فقط در role خاص اجرا شوند
+
+بخش RoadMap یکی از آخرین ستون‌های هسته‌ای فریم‌ورک بود.
+باهاش پروژه از حالت “یک‌سری تست جدا” به “سیستم مدیریت تست‌های سازمانی” ارتقا پیدا می‌کنه.
+
+⚙️ بخش ۷ — Config Layer
+
+فایل‌ها:
+
+runner/config.ts
+
+cypress.config.ts
+
+tsconfig.json
+
+تنظیمات CLI و env variables
+
+🎯 هدف
+
+Config Layer یعنی «مرکز کنترل تنظیمات اجرایی».
+تمام بخش‌های سیستم (ScenarioManager, FaultController, Cypress Runtime, Logger) به‌طور غیرمستقیم از این لایه اطلاعات می‌گیرن:
+مثل مسیرها، timeoutها، متغیرهای محیطی (env)، retries پیش‌فرض و baseUrl.
+
+🧱 ساختار Config در حال حاضر
+📁 1. runner/config.ts
+
+در MVP این فایل ساده است ولی قراره تبدیل بشه به محل ذخیره تنظیمات مرکزی Runner.
+ساختار پیشنهادی کاملش (برای فاز Core):
+
+// runner/config.ts
+export const CONFIG = {
+  retryLimit: 2,
+  logDir: "reports/logs/",
+  specRoot: "cypress/e2e/",
+  browser: "chrome",
+  cypressCommand: "npx cypress run --spec",
+  timeouts: {
+    login: 10000,
+    api: 15000,
+    ui: 8000
+  },
+  env: {
+    baseUrl: process.env.BASE_URL || "",
+    username: process.env.E2E_USER || "qa",
+    password: process.env.E2E_PASS || "",
+    role: process.env.E2E_ROLE || "admin",
+    target: process.env.TARGET || "staging"
+  }
+};
+
+⚡ مثال استفاده در سایر فایل‌ها
+
+در faultController.ts:
+
+import { CONFIG } from "./config";
+execSync(
+  `${CONFIG.cypressCommand} "cypress/e2e/${spec}" --browser ${CONFIG.browser}`,
+  { stdio: "inherit" }
+);
+
+
+در logger.ts:
+
+import { CONFIG } from "./config";
+const logFile = `${CONFIG.logDir}/${scenario}_${Date.now()}.json`;
+
+🧩 ارتباط بین Config و سایر بخش‌ها
+ماژول	ارتباط	توضیح
+faultController	←	مسیر Cypress و تنظیمات retry را می‌خواند
+logger	←	مسیر خروجی logDir را استفاده می‌کند
+policyEngine	←	در آینده، پالیسی‌های پیش‌فرض را از اینجا می‌گیرد
+scenarioManager	←	تنظیمات سطح اجرای سناریوها (مثل role و target)
+cypress.config.ts	↔	برای همگام‌سازی baseUrl و envها در زمان runtime
+CLI	→	override تنظیمات با ENV متغیرها
+🧠 2. cypress.config.ts
+
+تنظیمات داخلی Cypress برای زمان اجرای تست‌ها.
+در MVP تو فقط ساختار حداقلی داری ولی کاملش می‌تونه اینطور باشه:
+
+import { defineConfig } from "cypress";
+
+export default defineConfig({
+  e2e: {
+    specPattern: "cypress/e2e/**/*.cy.ts",
+    baseUrl: process.env.BASE_URL || "http://test.andishehpardaz.local",
+    chromeWebSecurity: false,
+    screenshotsFolder: "reports/screenshots",
+    videosFolder: "reports/videos",
+    downloadsFolder: "cypress/downloads",
+    setupNodeEvents(on, config) {
+      on("task", {
+        log(message) {
+          console.log("📋", message);
+          return null;
+        }
+      });
+      return config;
+    }
+  },
+  env: {
+    username: process.env.E2E_USER,
+    password: process.env.E2E_PASS,
+    role: process.env.E2E_ROLE,
+    target: process.env.TARGET
+  }
+});
+
+📌 نکات تنظیم:
+گزینه	توضیح
+specPattern	مسیر پیش‌فرض تمام تست‌ها
+baseUrl	URL محیط تست (می‌توان از CLI override کرد)
+videosFolder	محل ذخیره ویدیوها
+setupNodeEvents	نقطه‌ای برای افزودن pluginهای سفارشی مثل Allure
+💻 3. متغیرهای محیطی (ENV Variables)
+
+این بخش ارتباط بین CLI و Runner را برقرار می‌کند.
+
+مثال اجرای دستی:
+BASE_URL="http://test.local" \
+E2E_USER="admin" \
+E2E_PASS="123" \
+TARGET="staging" \
+npm run scenario:contracts
+
+
+در Cypress و Runner هر دو از این متغیرها استفاده می‌شود:
+
+Cypress.env("url")
+Cypress.env("username")
+process.env.E2E_USER
+
+🔩 4. فایل tsconfig.json
+
+نقشش در Config اینه که مسیرها و typeها را به‌درستی resolve کنه تا importها ساده‌تر شن.
+
+"paths": {
+  "@/*": ["shared/*"]
+}
+
+
+به تو اجازه می‌ده از هر جا بنویسی:
+
+import { something } from "@/dataCenter";
+
+
+به‌جای اینکه مسیر طولانی بنویسی.
+
+🔗 روابط بین Config Layer و سایر بخش‌ها
+graph TD
+  ENV[CLI / Environment Variables] --> CFG[cypress.config.ts]
+  ENV --> RUNCFG[runner/config.ts]
+  RUNCFG --> FC[faultController.ts]
+  RUNCFG --> LG[logger.ts]
+  RUNCFG --> SM[scenarioManager.ts]
+  CFG --> CYP[Cypress Runtime]
+  CYP --> CMD[commands.ts]
+
+📋 اثر تغییرات تنظیمات
+مورد	اثر مستقیم
+تغییر retryLimit در config.ts	همه تست‌ها بیشتر تکرار می‌شوند
+تغییر baseUrl	همه‌ی visitها به URL جدید هدایت می‌شوند
+تغییر browser	اجرای Cypress روی مرورگر متفاوت (مثلاً edge)
+تغییر مسیر logDir	لاگر خروجی را جای دیگری ذخیره می‌کند
+افزودن env جدید	دسترسی مستقیم از Cypress و Runner
+⚠️ خطاهای رایج
+مشکل	دلیل	راه‌حل
+Cannot find module '@/utils'	مسیر baseUrl در tsconfig اشتباه	بررسی "paths"
+Cypress باز نمی‌شود	baseUrl یا specPattern نادرست	اصلاح در config.ts
+env خالی است	CLI envها را ست نکردی	اضافه کردن قبل از npm run
+🚀 توصیه فنی
+
+همیشه متغیرها را از ENV یا config.ts بخوان، نه مستقیم در کد.
+
+برای تست محیط‌های مختلف (dev/staging/prod) فقط با تغییر CLI اجرا کن، نیازی به تغییر کد نیست.
+
+مسیرهای خروجی (reports/logs/) را absolute کن تا CI/CD به راحتی artifactها را بخواند.
+
+🔚 خلاصه روابط
+ورودی	مسیر	مصرف‌کننده
+CLI (BASE_URL, E2E_USER, ...)	runner/config.ts, cypress.config.ts	تمام سیستم
+TypeScript paths	tsconfig.json	همه‌ی importها
+Timeout و Retry	config.ts → faultController	کنترل اجرای فایل‌ها
+گزارش خروجی	config.ts → logger.ts	مسیر لاگ‌ها
+BaseUrl	cypress.config.ts → Cypress Runtime	اجرای تست‌ها
+
+با Config Layer، سیستم الان می‌تونه روی هر محیطی ران بشه بدون تغییر در کد.
+یعنی از اینجا به بعد فریم‌ورکت «قابل تنظیم و حمل» شده.

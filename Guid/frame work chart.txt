@@ -1,0 +1,25 @@
+new-framework/
+│
+├── runner/                 → Core engine
+│   ├── scenarioManager.ts   # Select & execute test scenarios
+│   ├── faultController.ts   # Retry / Stop-line policy control
+│   ├── policyEngine.ts      # Define dynamic test behaviors
+│   ├── logger.ts            # JSON logging system
+│   ├── scenarios.json       # Scenario roadmap definition
+│
+├── cypress/
+│   ├── e2e/                 # Modular tests (setup, create, cleanup, etc.)
+│   ├── support/
+│   │   ├── commands.ts      # Custom Cypress commands
+│   │   ├── e2e.ts           # Global hooks (screenshot on fail)
+│   │   ├── commands.d.ts    # IntelliSense definitions
+│   │   └── index.d.ts       # Global type declarations
+│   ├── fixtures/            # Optional test data
+│   └── reports/             # Output: logs, screenshots, videos
+│
+├── shared/
+│   └── dataCenter.ts        # Global static data (URLs, users, APIs, timeouts)
+│
+├── cypress.config.ts        # Cypress core config
+├── tsconfig.json            # TypeScript setup + alias "@/"
+└── package.json             # NPM scripts

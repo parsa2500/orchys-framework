@@ -1,0 +1,12 @@
+{
+  "criticalStop": {
+    "retries": 0,
+    "onError": { "*": "stop_line" },
+    "fallback": "stop"
+  },
+  "retryVisit2": {
+    "retries": 2,
+    "onError": { "visit": "retry" },
+    "fallback": "continue"
+  }
+}

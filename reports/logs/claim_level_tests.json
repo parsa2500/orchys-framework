@@ -1,0 +1,97 @@
+{
+  "scenario": "claim_level_tests",
+  "status": "passed",
+  "durationSec": 571.782,
+  "specs": [
+    {
+      "spec": "Claim Level Test/claim level 1 .cy.ts",
+      "status": "passed",
+      "attempt": 1,
+      "timestamp": "2025-11-01T09:01:53.221Z",
+      "error": null,
+      "video": null,
+      "screenshot": null
+    },
+    {
+      "spec": "Claim Level Test/claim level 1 .cy.ts",
+      "status": "passed",
+      "attempt": 1,
+      "timestamp": "2025-11-01T09:01:53.221Z",
+      "error": null,
+      "video": null,
+      "screenshot": null
+    },
+    {
+      "spec": "Claim Level Test/claim level 2 .cy.ts",
+      "status": "passed",
+      "attempt": 1,
+      "timestamp": "2025-11-01T09:04:59.346Z",
+      "error": null,
+      "video": null,
+      "screenshot": null
+    },
+    {
+      "spec": "Claim Level Test/claim level 2 .cy.ts",
+      "status": "passed",
+      "attempt": 1,
+      "timestamp": "2025-11-01T09:04:59.346Z",
+      "error": null,
+      "video": null,
+      "screenshot": null
+    },
+    {
+      "spec": "Claim Level Test/claim level 3 .cy.ts",
+      "status": "passed",
+      "attempt": 1,
+      "timestamp": "2025-11-01T09:05:46.183Z",
+      "error": null,
+      "video": null,
+      "screenshot": null
+    },
+    {
+      "spec": "Claim Level Test/claim level 3 .cy.ts",
+      "status": "passed",
+      "attempt": 1,
+      "timestamp": "2025-11-01T09:05:46.183Z",
+      "error": null,
+      "video": null,
+      "screenshot": null
+    },
+    {
+      "spec": "Claim Level Test/claim level 4 .cy.ts",
+      "status": "passed",
+      "attempt": 1,
+      "timestamp": "2025-11-01T09:09:01.608Z",
+      "error": null,
+      "video": null,
+      "screenshot": null
+    },
+    {
+      "spec": "Claim Level Test/claim level 4 .cy.ts",
+      "status": "passed",
+      "attempt": 1,
+      "timestamp": "2025-11-01T09:09:01.608Z",
+      "error": null,
+      "video": null,
+      "screenshot": null
+    },
+    {
+      "spec": "Claim Level Test/claim level 5 .cy.ts",
+      "status": "passed",
+      "attempt": 1,
+      "timestamp": "2025-11-01T09:10:03.382Z",
+      "error": null,
+      "video": null,
+      "screenshot": null
+    },
+    {
+      "spec": "Claim Level Test/claim level 5 .cy.ts",
+      "status": "passed",
+      "attempt": 1,
+      "timestamp": "2025-11-01T09:10:03.382Z",
+      "error": null,
+      "video": null,
+      "screenshot": null
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "name": "new-framework",
+  "version": "1.0.0",
+  "license": "ISC",
+  "private": true,
+  "devDependencies": {
+    "@types/node": "^20.12.7",
+    "@types/prompts": "^2.4.9",
+    "cypress": "^15.5.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  },
+  "scripts": {
+    "cypress:open": "cypress open",
+    "cypress:run": "cypress run",
+    "scenario:select": "ts-node runner/scenarioManager.ts",
+    "grand": "ts-node runner/grandManager.ts",
+    "scenario": "ts-node runner/scenarioRunner.ts"
+  },
+  "dependencies": {
+    "moment-jalaali": "^0.10.4",
+    "prompts": "^2.4.2"
+  }
+}
