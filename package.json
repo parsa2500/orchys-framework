@@ -14,7 +14,8 @@
     "cypress:open": "cypress open",
     "cypress:run": "cypress run",
     "scenario:select": "ts-node runner/scenarioManager.ts",
-    "grand": "ts-node runner/grandManager.ts",
+    "scenarioSelect": "ts-node runner/grandManager.ts",
+    "start": "npm run scenarioSelect",
     "scenario": "ts-node runner/scenarioRunner.ts"
   },
   "dependencies": {
