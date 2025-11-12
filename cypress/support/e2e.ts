@@ -16,6 +16,7 @@
 // Import commands.js using ES2015 syntax:
 // cypress/support/e2e.ts
 import "./commands";
+import "@/global";
 
 // cypress/support/e2e.ts
 // 🔹 فایل support برای پروژه
