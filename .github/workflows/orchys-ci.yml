@@ -17,7 +17,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-
+      - name: install pakage
+        run: npm install
       - name: Install deps
         run: npm ci
 
